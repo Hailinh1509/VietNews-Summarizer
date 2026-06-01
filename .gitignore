@@ -1,0 +1,37 @@
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Data Directories (avoid pushing heavy data files to Git)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Model Checkpoints & Large Files
+*.bin
+*.pt
+*.pth
+*.h5
+checkpoints/
+models/
+runs/
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local system files
+.DS_Store
+Thumbs.db
