@@ -154,6 +154,7 @@ with col2:
                 # 2. Gọi hàm tiền xử lý từ src.preprocess
                 cleaned_text = clean_text(raw_input)
                 cleaned_len = len(cleaned_text)
+
                 
                 # 3. Tạo mockup tóm tắt (giả định)
                 time.sleep(1.0) # Tạo hiệu ứng xử lý AI
