@@ -1,19 +1,89 @@
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
-def get_tokenizer(model_checkpoint: str = "vinai/bartpho-word"):
-    """Tải và khởi tạo tokenizer cho BARTpho."""
+# Checkpoint gốc của VinAI
+PRETRAINED_CHECKPOINT = "vinai/bartpho-word"
+
+# Checkpoint đã fine-tune của nhóm
+FINETUNED_CHECKPOINT = "hailinh1509/bartpho-news-summarizer"
+
+
+def resolve_checkpoint(model_checkpoint: str = PRETRAINED_CHECKPOINT):
+    """
+    Chuyển lựa chọn model thành checkpoint thật.
+    Vẫn giữ tương thích với code cũ.
+    """
+    if model_checkpoint in ["finetuned", "fine-tuned", "bartpho-finetuned"]:
+        return FINETUNED_CHECKPOINT
+
+    if model_checkpoint in ["pretrained", "pre-trained", "bartpho-pretrained"]:
+        return PRETRAINED_CHECKPOINT
+
+    return model_checkpoint
+
+
+def get_tokenizer(model_checkpoint: str = PRETRAINED_CHECKPOINT):
+    """Tải tokenizer cho BARTpho."""
+    model_checkpoint = resolve_checkpoint(model_checkpoint)
     return AutoTokenizer.from_pretrained(model_checkpoint)
 
-def get_model(model_checkpoint: str = "vinai/bartpho-word"):
-    """Tải mô hình Seq2Seq BARTpho."""
-    return AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
 
-def preprocess_tokenize_function(examples, tokenizer, max_input_length: int = 1024, max_target_length: int = 256):
+def get_model(model_checkpoint: str = PRETRAINED_CHECKPOINT):
+    """Tải mô hình BARTpho."""
+    model_checkpoint = resolve_checkpoint(model_checkpoint)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
+    model.eval()
+    return model
+
+
+def generate_summary(
+    text: str,
+    tokenizer,
+    model,
+    max_length: int = 128,
+    min_length: int = 20,
+    num_beams: int = 4
+):
     """
-    Thực hiện tokenize (chuyển chữ sang số), đồng thời giới hạn độ dài (truncation) 
-    và thêm padding về độ dài tối đa cho cả đầu vào (content) và nhãn (summary).
+    Sinh bản tóm tắt bằng BARTpho.
+
+    max_length: độ dài tối đa bản tóm tắt
+    min_length: độ dài tối thiểu bản tóm tắt
+    num_beams: số nhánh Beam Search
     """
-    # Tokenize phần nội dung bài viết
+
+    inputs = tokenizer(
+        text,
+        return_tensors="pt",
+        max_length=1024,
+        truncation=True,
+        padding=True
+    )
+
+    summary_ids = model.generate(
+        input_ids=inputs["input_ids"],
+        attention_mask=inputs["attention_mask"],
+        max_length=max_length,
+        min_length=min_length,
+        num_beams=num_beams,
+        length_penalty=2.0,
+        no_repeat_ngram_size=3,
+        repetition_penalty=1.2,
+        early_stopping=True
+    )
+
+    return tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+
+
+def preprocess_tokenize_function(
+    examples,
+    tokenizer,
+    max_input_length: int = 1024,
+    max_target_length: int = 256
+):
+    """
+    Tokenize dữ liệu huấn luyện: content -> input_ids, summary -> labels.
+    """
+
     model_inputs = tokenizer(
         examples["content"],
         max_length=max_input_length,
@@ -21,7 +91,6 @@ def preprocess_tokenize_function(examples, tokenizer, max_input_length: int = 10
         truncation=True
     )
 
-    # Tokenize phần tóm tắt
     labels = tokenizer(
         text_target=examples["summary"],
         max_length=max_target_length,
@@ -29,7 +98,6 @@ def preprocess_tokenize_function(examples, tokenizer, max_input_length: int = 10
         truncation=True
     )
 
-    # Gán nhãn cho mô hình huấn luyện
     model_inputs["labels"] = labels["input_ids"]
 
     return model_inputs
