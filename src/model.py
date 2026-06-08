@@ -1,4 +1,4 @@
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModel, AutoModelForSeq2SeqLM
 
 # Checkpoint gốc của VinAI
 PRETRAINED_CHECKPOINT = "vinai/bartpho-word"
@@ -26,11 +26,15 @@ def get_tokenizer(model_checkpoint: str = PRETRAINED_CHECKPOINT):
     model_checkpoint = resolve_checkpoint(model_checkpoint)
     return AutoTokenizer.from_pretrained(model_checkpoint)
 
-
 def get_model(model_checkpoint: str = PRETRAINED_CHECKPOINT):
-    """Tải mô hình BARTpho."""
+    """Tải mô hình BARTpho theo loại checkpoint."""
     model_checkpoint = resolve_checkpoint(model_checkpoint)
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
+
+    if model_checkpoint == PRETRAINED_CHECKPOINT:
+        model = AutoModel.from_pretrained(model_checkpoint)
+    else:
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_checkpoint)
+
     model.eval()
     return model
 

@@ -23,13 +23,30 @@ def load_bartpho_model(model_name):
     model.eval()
     return tokenizer, model
 
-def summarize_with_bartpho(text, model_name, max_len=100, min_len=20):
+def summarize_with_bartpho(text, model_name, max_len=256, min_len=30):
+    if "Pre-trained" in model_name:
+        tokenizer = get_tokenizer("pretrained")
+
+        inputs = tokenizer(
+            text,
+            return_tensors="pt",
+            max_length=1024,
+            truncation=True,
+            padding=True
+        )
+
+        return (
+            "Pre-trained BARTPho đã load tokenizer và tokenize văn bản thành công. "
+            f"Số token đầu vào: {inputs['input_ids'].shape[1]}. "
+            "Model gốc vinai/bartpho-word chưa dùng để sinh tóm tắt trực tiếp như checkpoint fine-tuned."
+        )
+
     tokenizer, model = load_bartpho_model(model_name)
 
     inputs = tokenizer(
         text,
         return_tensors="pt",
-        max_length=1024,
+        max_length=512,
         truncation=True,
         padding=True
     )
@@ -37,16 +54,17 @@ def summarize_with_bartpho(text, model_name, max_len=100, min_len=20):
     summary_ids = model.generate(
         input_ids=inputs["input_ids"],
         attention_mask=inputs["attention_mask"],
-        max_length=max_len,
+        max_new_tokens=max_len,
         min_length=min_len,
-        num_beams=5,
-        length_penalty=1.0,
+        num_beams=1,
         no_repeat_ngram_size=3,
-        repetition_penalty=1.2,
+        length_penalty=1.0,
         early_stopping=True
     )
 
     return tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+
+    return note + summary
 
 # Cấu hình giao diện Streamlit
 st.set_page_config(
@@ -157,12 +175,12 @@ with st.sidebar:
 
     max_len = st.slider(
         "Độ dài tối đa tóm tắt (max_length)",
-        30, 120, 60, step=10
+        50, 256, 256, step=10
     )
 
     min_len = st.slider(
         "Độ dài tối thiểu tóm tắt (min_length)",
-        5, 50, 10, step=5
+        10, 150, 30, step=5
     )
 
     st.markdown("---")
@@ -201,10 +219,10 @@ with col2:
             st.warning("⚠️ Vui lòng nhập nội dung bài viết trước khi bấm tóm tắt.")
         else:
             with st.spinner("⏳ Đang thực hiện làm sạch và tóm tắt văn bản..."):
-                original_len = len(raw_input)
+                original_len = len(raw_input.split())
 
                 cleaned_text = clean_text(raw_input)
-                cleaned_len = len(cleaned_text)
+                cleaned_len = len(cleaned_text.split())
 
                 real_summary = summarize_with_bartpho(
                     cleaned_text,
@@ -213,16 +231,16 @@ with col2:
                     min_len=min_len
                 )
 
-                summary_len = len(real_summary)
+                summary_len = len(real_summary.split())
 
                 st.markdown("#### 📝 Văn bản đã tóm tắt:")
                 st.success(real_summary)
 
-                st.markdown("#### 📊 Thống kê ký tự:")
+                st.markdown("#### 📊 Thống kê số từ:")
                 st.markdown(f"""
-                <span class="stat-badge badge-original">Gốc: {original_len:,} ký tự</span>
-                <span class="stat-badge badge-cleaned">Làm sạch: {cleaned_len:,} ký tự</span>
-                <span class="stat-badge badge-summary">Tóm tắt: {summary_len:,} ký tự</span>
+                <span class="stat-badge badge-original">Gốc: {original_len:,} từ</span>
+                <span class="stat-badge badge-cleaned">Làm sạch: {cleaned_len:,} từ</span>
+                <span class="stat-badge badge-summary">Tóm tắt: {summary_len:,} từ</span>
                 """, unsafe_allow_html=True)
 
                 if show_cleaned_diff:
