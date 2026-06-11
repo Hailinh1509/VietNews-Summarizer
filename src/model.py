@@ -40,22 +40,25 @@ def generate_summary(
     text: str,
     tokenizer,
     model,
-    max_length: int = 128,
-    min_length: int = 20,
+    max_new_tokens: int = 256,
+    min_length: int = 30,
     num_beams: int = 4
 ):
     """
-    Sinh bản tóm tắt bằng BARTpho.
+    Sinh bản tóm tắt bằng mô hình BARTPho.
 
-    max_length: độ dài tối đa bản tóm tắt
-    min_length: độ dài tối thiểu bản tóm tắt
-    num_beams: số nhánh Beam Search
+    Mục đích:
+    - Dùng chung cho cả Pre-trained và Fine-tuned.
+    - Văn bản đầu vào được tokenizer chuyển thành input_ids và attention_mask.
+    - Model dùng generate() để sinh output.
+    - Cấu hình generate được đặt giống phần test trong notebook fine-tuning:
+      max_new_tokens=256, min_length=30, num_beams=4.
     """
 
     inputs = tokenizer(
         text,
         return_tensors="pt",
-        max_length=1024,
+        max_length=512,
         truncation=True,
         padding=True
     )
@@ -63,12 +66,11 @@ def generate_summary(
     summary_ids = model.generate(
         input_ids=inputs["input_ids"],
         attention_mask=inputs["attention_mask"],
-        max_length=max_length,
+        max_new_tokens=max_new_tokens,
         min_length=min_length,
         num_beams=num_beams,
-        length_penalty=2.0,
         no_repeat_ngram_size=3,
-        repetition_penalty=1.2,
+        length_penalty=1.0,
         early_stopping=True
     )
 
