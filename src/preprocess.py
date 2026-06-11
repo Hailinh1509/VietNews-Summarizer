@@ -12,7 +12,7 @@ def remove_html_tags(text: str) -> str:
     """Xóa thẻ HTML còn sót lại."""
     if not isinstance(text, str):
         return ""
-    return re.sub(r"<[^>]+>", " ", text)
+    return re.sub(r"<[^>]+>", " ", text) #[^>] - mọi ký tự khác dấu >
 
 def remove_urls(text: str) -> str:
     """Xóa URL."""
@@ -119,6 +119,8 @@ def normalize_punctuation(text: str) -> str:
     text = re.sub(r",{2,}", ",", text)
     return text
 
+# gọi lần lượt các hàm làm sạch đã xây dựng trước đó để biến một văn bản thô thành văn bản sạch, 
+# sẵn sàng cho bước tokenization và fine-tuning BARTPho.
 def clean_text(text: str) -> str:
     """Pipeline làm sạch hoàn chỉnh cho một chuỗi văn bản."""
     if not isinstance(text, str):
