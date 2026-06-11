@@ -13,7 +13,6 @@ env/
 
 # Data Directories
 # (files are small ~30KB, tracked directly in git)
-
 # Model Checkpoints & Large Files
 *.bin
 *.pt

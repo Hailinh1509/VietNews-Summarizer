@@ -1,7 +1,7 @@
 import streamlit as st
 import sys
 import os
-import pandas as pd
+import gc
 
 # Thêm thư mục gốc vào path để có thể import từ src
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -9,8 +9,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.preprocess import clean_text
 from src.model import get_tokenizer, get_model, generate_summary
 
-
-@st.cache_resource
 def load_bartpho_model(model_name):
     # Chuẩn hóa chuỗi giao diện thành key-word chuẩn để model.py xử lý
     if "Fine-tuned" in model_name:
@@ -23,47 +21,31 @@ def load_bartpho_model(model_name):
 
     model.eval()
     return tokenizer, model
-@st.cache_data
-def load_test_predictions():
-    path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "data", "results", "test_predictions.xlsx")
-    )
-    return pd.read_excel(path)
 
 def summarize_with_bartpho(text, model_name, max_len=256, min_len=30):
-    if "Pre-trained" in model_name:
-        predictions_df = load_test_predictions()
-
-        matched = predictions_df[
-            predictions_df["content"].astype(str).str.strip() == text.strip()
-        ]
-
-        if not matched.empty:
-            return str(matched.iloc[0]["pretrained_pred"])
-
-        return "Không tìm thấy output Pre-trained tương ứng trong file test_predictions.xlsx."
+    """
+    Hàm xử lý tóm tắt văn bản trên app.
+    Mỗi lần chạy sẽ load model theo lựa chọn hiện tại,
+    sau đó giải phóng bộ nhớ để tránh crash khi đổi model.
+    """
 
     tokenizer, model = load_bartpho_model(model_name)
 
-    inputs = tokenizer(
-        text,
-        return_tensors="pt",
-        max_length=512,
-        truncation=True,
-        padding=True
-    )
-    summary_ids = model.generate(
-    input_ids=inputs["input_ids"],
-    attention_mask=inputs["attention_mask"],
-    max_new_tokens=max_len,
-    min_length=min_len,
-    num_beams=1,
-    no_repeat_ngram_size=3,
-    length_penalty=1.0,
-    early_stopping=True
-    )
+    try:
+        result = generate_summary(
+            text=text,
+            tokenizer=tokenizer,
+            model=model,
+            max_new_tokens=max_len,
+            min_length=min_len,
+            num_beams=4
+        )
+    finally:
+        del tokenizer
+        del model
+        gc.collect()
 
-    return tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+    return result
 
 # Cấu hình giao diện Streamlit
 st.set_page_config(
@@ -223,20 +205,12 @@ with col2:
                 cleaned_text = clean_text(raw_input)
                 cleaned_len = len(cleaned_text.split())
 
-                if "Pre-trained" in model_name:
-                    real_summary = summarize_with_bartpho(
-                        raw_input,
-                        model_name,
-                        max_len=max_len,
-                        min_len=min_len
-                    )
-                else:
-                    real_summary = summarize_with_bartpho(
-                        cleaned_text,
-                        model_name,
-                        max_len=max_len,
-                        min_len=min_len
-                    )
+                real_summary = summarize_with_bartpho(
+                    cleaned_text,
+                    model_name,
+                    max_len=max_len,
+                    min_len=min_len
+            )
 
                 summary_len = len(real_summary.split())
 
