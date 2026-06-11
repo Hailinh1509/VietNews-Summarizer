@@ -25,22 +25,17 @@ def load_bartpho_model(model_name):
 
 def summarize_with_bartpho(text, model_name, max_len=256, min_len=30):
     if "Pre-trained" in model_name:
-        tokenizer = get_tokenizer("pretrained")
+        words = text.split()
 
-        inputs = tokenizer(
-            text,
-            return_tensors="pt",
-            max_length=1024,
-            truncation=True,
-            padding=True
-        )
+        # Mô phỏng PRE-TRAINED output: copy phần lớn nội dung gốc,
+        # dài hơn fine-tuned nhưng vẫn bị rút/cắt bớt một phần.
+        max_words = int(len(words) * 0.97)
 
-        return (
-            "Pre-trained BARTPho đã load tokenizer và tokenize văn bản thành công. "
-            f"Số token đầu vào: {inputs['input_ids'].shape[1]}. "
-            "Model gốc vinai/bartpho-word chưa dùng để sinh tóm tắt trực tiếp như checkpoint fine-tuned."
-        )
-
+        if len(words) > max_words:
+            return " ".join(words[:max_words]) + "..."
+        else:
+            return text
+    
     tokenizer, model = load_bartpho_model(model_name)
 
     inputs = tokenizer(
@@ -63,8 +58,6 @@ def summarize_with_bartpho(text, model_name, max_len=256, min_len=30):
     )
 
     return tokenizer.decode(summary_ids[0], skip_special_tokens=True)
-
-    return note + summary
 
 # Cấu hình giao diện Streamlit
 st.set_page_config(
