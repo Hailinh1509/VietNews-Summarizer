@@ -11,12 +11,6 @@ venv/
 ENV/
 env/
 
-# Data Directories (avoid pushing heavy data files to Git)
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
-
 # Model Checkpoints & Large Files
 *.bin
 *.pt
